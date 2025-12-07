@@ -144,6 +144,74 @@
       display: none;
     }
 
+    /* GIF thumbnail and modal styles */
+    .gif-thumb {
+      display: inline-block;
+      width: 44px;
+      height: 44px;
+      margin-left: 8px;
+      border-radius: 8px;
+      overflow: hidden;
+      vertical-align: middle;
+      border: 1px solid #2b2f48;
+      cursor: pointer;
+      background: #0b1020;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+    }
+    .gif-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .gif-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .gif-modal.open {
+      display: flex;
+    }
+    .gif-modal .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(2,6,23,0.7);
+      backdrop-filter: blur(4px);
+    }
+    .gif-modal .content {
+      position: relative;
+      max-width: 90%;
+      max-height: 80%;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+      background: #07102a;
+      z-index: 2;
+    }
+    .gif-modal .content img {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 80vh;
+    }
+    .gif-modal .close-btn {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      z-index: 3;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.06);
+      color: #fff;
+      padding: 6px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
     @media (max-width: 600px) {
       body {
         padding: 12px;
@@ -156,6 +224,10 @@
       }
       th, td {
         padding: 5px 3px;
+      }
+      .gif-thumb {
+        width: 36px;
+        height: 36px;
       }
     }
   </style>
@@ -492,6 +564,93 @@
         });
       });
     });
+
+    // GIF thumbnail logic
+    (function addGifThumbnails() {
+      // map muscle tag text to a small GIF preview URL (replace or expand as desired)
+      const gifMap = {
+        'Chest': 'https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif',
+        'Upper Chest': 'https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif',
+        'Triceps': 'https://media.giphy.com/media/3oEdv2YtQXjGzYlUX2/giphy.gif',
+        'Lats': 'https://media.giphy.com/media/l41m6Qp9fU0Qw3wQY/giphy.gif',
+        'Mid Back': 'https://media.giphy.com/media/l41m6Qp9fU0Qw3wQY/giphy.gif',
+        'Biceps': 'https://media.giphy.com/media/3o6ZtpxSZbQRRnwCKQ/giphy.gif',
+        'Brachialis': 'https://media.giphy.com/media/3o6ZtpxSZbQRRnwCKQ/giphy.gif',
+        'Quads/Glutes': 'https://media.giphy.com/media/26FPGDSR2fnfD6yso/giphy.gif',
+        'Hamstrings': 'https://media.giphy.com/media/26FPGDSR2fnfD6yso/giphy.gif',
+        'Quads': 'https://media.giphy.com/media/26FPGDSR2fnfD6yso/giphy.gif',
+        'Front/Side Delts': 'https://media.giphy.com/media/l0HlJ7MZg5G7oWb5G/giphy.gif',
+        'Side Delts': 'https://media.giphy.com/media/l0HlJ7MZg5G7oWb5G/giphy.gif',
+        'Rear Delts': 'https://media.giphy.com/media/l0HlJ7MZg5G7oWb5G/giphy.gif'
+      };
+
+      // create thumbnail elements next to each muscle-tag
+      document.querySelectorAll('.muscle-tag').forEach(tagEl => {
+        const key = tagEl.textContent.trim();
+        const url = gifMap[key];
+        if (!url) return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'gif-thumb';
+        btn.title = `Preview ${key} movement`;
+
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = key + ' preview';
+        img.loading = 'lazy';
+
+        btn.appendChild(img);
+        // attach data for the modal
+        btn.dataset.gif = url;
+
+        // add click handler to open modal (implemented below)
+        tagEl.parentNode.insertBefore(btn, tagEl.nextSibling);
+      });
+
+      // add modal markup to body
+      const modal = document.createElement('div');
+      modal.className = 'gif-modal';
+      modal.id = 'gifModal';
+      modal.innerHTML = `
+        <div class="overlay" data-close="1"></div>
+        <div class="content">
+          <button class="close-btn" aria-label="Close">Close</button>
+          <img id="gifPreview" src="" alt="exercise preview">
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      const gifModal = document.getElementById('gifModal');
+      const gifPreview = document.getElementById('gifPreview');
+
+      // open modal on thumbnail click
+      document.addEventListener('click', (e) => {
+        const thumb = e.target.closest('.gif-thumb');
+        if (!thumb) return;
+        const src = thumb.dataset.gif;
+        if (!src) return;
+
+        gifPreview.src = src;
+        gifModal.classList.add('open');
+      });
+
+      // close handlers
+      gifModal.addEventListener('click', (e) => {
+        if (e.target.dataset.close === '1' || e.target.classList.contains('close-btn')) {
+          closeModal();
+        }
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+      });
+
+      function closeModal() {
+        gifModal.classList.remove('open');
+        // stop GIF by clearing src (prevents continued network usage)
+        gifPreview.src = '';
+      }
+    })();
   </script>
 </body>
 </html>
